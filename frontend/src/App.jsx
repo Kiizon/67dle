@@ -10,6 +10,7 @@ function App() {
   const [currentGuess, setCurrentGuess] = useState('');
   const [gameState, setGameState] = useState('loading'); // loading, playing, won, lost
   const [message, setMessage] = useState('');
+  const [solution, setSolution] = useState('');
   const [shaking, setShaking] = useState(false);
 
   // Initialize Game
@@ -27,6 +28,7 @@ function App() {
           const parsed = JSON.parse(savedState);
           setGuesses(parsed.guesses);
           setGameState(parsed.gameState);
+          setSolution(parsed.solution || '');
         } else {
           setGameState('playing');
         }
@@ -42,7 +44,8 @@ function App() {
     if (dayIndex !== null && gameState !== 'loading') {
       localStorage.setItem(`67dle_state_${dayIndex}`, JSON.stringify({
         guesses,
-        gameState
+        gameState,
+        solution
       }));
     }
   }, [guesses, gameState, dayIndex]);
@@ -97,7 +100,9 @@ function App() {
         setMessage("Splendid!");
       } else if (newGuesses.length >= MAX_GUESSES) {
         setGameState('lost');
-        setMessage(data.solution || "Game Over"); // Server currently doesn't send solution, maybe update backend or just show "Good effort"
+        const sol = data.solution || "Game Over";
+        setSolution(sol);
+        setMessage(sol);
       }
 
     } catch (e) {
@@ -168,15 +173,37 @@ function App() {
         <h1 style={{ margin: 0, letterSpacing: '0.1em', fontSize: '2rem', fontWeight: 700 }}>67DLE</h1>
       </header>
 
+      {/* Solution Toast - Original Wordle Style */}
+      {gameState === 'lost' && solution && (
+        <div style={{
+          position: 'absolute',
+          top: '70px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'black',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '4px',
+          fontWeight: 'bold',
+          fontSize: '1rem',
+          letterSpacing: '0.1em',
+          zIndex: 20,
+          boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+          pointerEvents: 'none' // Let clicks pass through if needed
+        }}>
+          {solution}
+        </div>
+      )}
+
       {message && <div style={{
-        position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)',
+        position: 'absolute', top: '70px', left: '50%', transform: 'translateX(-50%)',
         backgroundColor: '#fff', color: '#000', padding: '10px 20px', borderRadius: '4px',
-        fontWeight: 'bold', zIndex: 10
+        fontWeight: 'bold', zIndex: 30
       }}>
         {message}
       </div>}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px', marginTop: '40px' }}>
         <div style={{ display: 'grid', gridTemplateRows: `repeat(${MAX_GUESSES}, 1fr)`, gap: '5px', marginBottom: '20px' }}>
           {/* Previous Guesses */}
           {guesses.map((g, i) => (
@@ -196,6 +223,7 @@ function App() {
       {(gameState === 'won' || gameState === 'lost') && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
           <h2 style={{ margin: '0 0 10px 0' }}>{gameState === 'won' ? 'You Won!' : 'Next Time!'}</h2>
+
           <button
             onClick={copyToClipboard}
             style={{
@@ -210,6 +238,19 @@ function App() {
       )}
 
       <Keyboard onKey={handleVirtualKey} getKeyClass={getKeyClass} />
+
+      {/* Credits */}
+      <div style={{
+        position: 'fixed',
+        bottom: '10px',
+        right: '10px',
+        fontSize: '0.8rem',
+        color: '#565758',
+        opacity: 0.7,
+        pointerEvents: 'none'
+      }}>
+        made with ♡ by kish for sammich
+      </div>
     </div>
   )
 }

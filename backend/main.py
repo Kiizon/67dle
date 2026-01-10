@@ -102,4 +102,4 @@ def check_guess(request: GuessRequest):
             result[i] = "present"
             target_letters_count[letter] -= 1
             
-    return {"result": result, "is_valid_word": True}
+    return {"result": result, "is_valid_word": True, "solution": target}
