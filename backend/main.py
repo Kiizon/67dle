@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import json
 import random
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import os
 
 app = FastAPI()
@@ -38,8 +39,8 @@ class GuessResponse(BaseModel):
     is_valid_word: bool
 
 def get_daily_word() -> str:
-    # Use current date as seed to pick a random consistent word
-    today = datetime.now().date()
+    # Use current date in EST as seed to pick a random consistent word
+    today = datetime.now(ZoneInfo("America/New_York")).date()
     # Create a seeded random instance so it doesn't affect global random state
     rng = random.Random(today.toordinal())
     
@@ -53,8 +54,8 @@ def read_root():
 
 @app.get("/daily-word-check")
 def check_daily_word():
-    """Returns the index of the day, to help frontend track 'new day'"""
-    today = datetime.now().date()
+    # Use current date in EST as seed
+    today = datetime.now(ZoneInfo("America/New_York")).date()
     days_diff = (today - START_DATE).days
     return {"day_index": days_diff}
 
