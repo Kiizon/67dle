@@ -1,0 +1,33 @@
+{
+    "builds": [
+        {
+            "src": "backend/main.py",
+            "use": "@vercel/python"
+        },
+        {
+            "src": "frontend/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        }
+    ],
+    "rewrites": [
+        {
+            "source": "/daily-word-check",
+            "destination": "/backend/main.py"
+        },
+        {
+            "source": "/validate",
+            "destination": "/backend/main.py"
+        },
+        {
+            "source": "/guess",
+            "destination": "/backend/main.py"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/frontend/$1"
+        }
+    ]
+}
