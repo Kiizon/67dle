@@ -1,42 +1,213 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+/* Main App Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Header */
+header {
+  border-bottom: 1px solid #3a3a3c;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  height: 50px;
+  /* Explicit height control */
+}
+
+h1 {
+  margin: 0;
+  letter-spacing: 0.1em;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+/* Game Board Area */
+.game-board-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  min-height: 0;
+  /* Crucial for allowing flex child to shrink below content size */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 5px;
+  width: 100%;
+  max-width: 350px;
+  /* Aspect ratio for 6 columns * 7 rows + gaps roughly */
+  aspect-ratio: 6 / 7;
+  /* Ensure it doesn't overflow vertically */
+  max-height: 100%;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+}
+
+.tile {
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--color-tile-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+  background-color: transparent;
+  user-select: none;
+  text-transform: uppercase;
+}
+
+/* Keyboard Area */
+.keyboard-container {
+  width: 100%;
+  padding: 0 8px 8px 8px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.key-button {
+  height: 58px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  color: white;
+  text-transform: uppercase;
+  flex: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.key-button.large {
+  flex: 1.5;
+  font-size: 12px;
+}
+
+/* Message/Toast */
+.toast-message {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #fff;
+  color: #000;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 30;
+  white-space: nowrap;
+}
+
+.game-over-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(18, 18, 19, 0.9);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #3a3a3c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 40;
+}
+
+/* Responsive Adjustments */
+
+/* Short screens (e.g. phones with bars visible) */
+@media (max-height: 700px) {
+  header {
+    padding: 0.5rem;
+    height: 40px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .game-board-container {
+    padding: 5px;
+  }
+
+  .key-button {
+    height: 48px;
+    font-size: 1rem;
+  }
+}
+
+/* Very short screens */
+@media (max-height: 600px) {
+  .tile {
+    font-size: 1.4rem;
+  }
+
+  .key-button {
+    height: 42px;
+    font-size: 0.9rem;
+  }
+
+  .keyboard-row {
+    margin-bottom: 4px;
+    gap: 4px;
+  }
+
+  .toast-message {
+    top: 50px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Extremely short screens (landscape or tiny phones) */
+@media (max-height: 500px) {
+  header {
+    display: none;
+    /* Hide header on super small screens to save space? Or make it very tiny */
+  }
+
+  .key-button {
+    height: 35px;
+  }
+}
+
+/* Credits */
+.credits {
+  font-size: 0.7rem;
+  color: #565758;
+  opacity: 0.7;
+  padding-bottom: 5px;
+  pointer-events: none;
   text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }

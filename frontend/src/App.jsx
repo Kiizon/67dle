@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import './App.css'
 
 const API_URL = import.meta.env.PROD ? '' : 'http://127.0.0.1:8000';
 const WORD_LENGTH = 6;
@@ -74,7 +75,6 @@ function App() {
       return;
     }
 
-    // Optimistic UI updates could happen here, but we wait for server validation for MVP
     try {
       const res = await fetch(`${API_URL}/guess`, {
         method: 'POST',
@@ -129,7 +129,6 @@ function App() {
   // Calculate Keyboard Colors
   const getKeyClass = (key) => {
     let status = 'default';
-    // Priority: correct > present > absent > default
     for (let g of guesses) {
       for (let i = 0; i < WORD_LENGTH; i++) {
         if (g.word[i] === key) {
@@ -162,58 +161,20 @@ function App() {
 
   return (
     <div className="app-container">
-      <header style={{
-        borderBottom: '1px solid #3a3a3c',
-        padding: '1rem',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: '1rem'
-      }}>
-        <h1 style={{ margin: 0, letterSpacing: '0.1em', fontSize: '2rem', fontWeight: 700 }}>67DLE</h1>
+      <header>
+        <h1>67DLE</h1>
       </header>
 
-      {/* Solution Toast - Original Wordle Style */}
-      {gameState === 'lost' && solution && (
-        <div style={{
-          position: 'absolute',
-          top: '70px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: 'black',
-          color: 'white',
-          padding: '12px 24px',
-          borderRadius: '4px',
-          fontWeight: 'bold',
-          fontSize: '1rem',
-          letterSpacing: '0.1em',
-          zIndex: 20,
-          boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-          pointerEvents: 'none' // Let clicks pass through if needed
-        }}>
-          {solution}
-        </div>
-      )}
+      {message && <div className="toast-message">{message}</div>}
 
-      {message && <div style={{
-        position: 'absolute', top: '70px', left: '50%', transform: 'translateX(-50%)',
-        backgroundColor: '#fff', color: '#000', padding: '10px 20px', borderRadius: '4px',
-        fontWeight: 'bold', zIndex: 30
-      }}>
-        {message}
-      </div>}
-
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px', marginTop: '40px' }}>
-        <div style={{ display: 'grid', gridTemplateRows: `repeat(${MAX_GUESSES}, 1fr)`, gap: '5px', marginBottom: '20px' }}>
-          {/* Previous Guesses */}
+      <div className="game-board-container">
+        <div className="grid-container">
           {guesses.map((g, i) => (
             <Row key={i} word={g.word} result={g.result} />
           ))}
-          {/* Current Guess */}
           {gameState === 'playing' && guesses.length < MAX_GUESSES && (
             <Row word={currentGuess} current={true} shaking={shaking} />
           )}
-          {/* Empty Rows */}
           {Array.from({ length: MAX_GUESSES - 1 - guesses.length - (gameState === 'playing' ? 0 : -1) }).map((_, i) => (
             <Row key={`empty-${i}`} />
           ))}
@@ -221,35 +182,26 @@ function App() {
       </div>
 
       {(gameState === 'won' || gameState === 'lost') && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
+        <div className="game-over-modal">
           <h2 style={{ margin: '0 0 10px 0' }}>{gameState === 'won' ? 'You Won!' : 'Next Time!'}</h2>
-
           <button
             onClick={copyToClipboard}
             style={{
               backgroundColor: '#538d4e', color: 'white',
-              padding: '15px 30px', borderRadius: '30px',
-              fontSize: '1.2rem', fontWeight: 'bold',
+              padding: '10px 20px', borderRadius: '30px',
+              fontSize: '1rem', fontWeight: 'bold',
               display: 'flex', alignItems: 'center', gap: '8px'
             }}>
-            SHARE <span style={{ fontSize: '1.5rem' }}>📤</span>
+            SHARE <span style={{ fontSize: '1.2rem' }}>📤</span>
           </button>
         </div>
       )}
 
-      <Keyboard onKey={handleVirtualKey} getKeyClass={getKeyClass} />
-
-      {/* Credits */}
-      <div style={{
-        position: 'fixed',
-        bottom: '10px',
-        right: '10px',
-        fontSize: '0.8rem',
-        color: '#565758',
-        opacity: 0.7,
-        pointerEvents: 'none'
-      }}>
-        made with <span style={{ color: '#ff2c2c' }}>♡</span> by kish for sammich
+      <div className="bottom-section">
+        <Keyboard onKey={handleVirtualKey} getKeyClass={getKeyClass} />
+        <div className="credits">
+          made with <span style={{ color: '#ff2c2c' }}>♡</span> by kish for sammich
+        </div>
       </div>
     </div>
   )
@@ -258,7 +210,7 @@ function App() {
 function Row({ word = '', result = [], current = false, shaking = false }) {
   const letters = word.padEnd(WORD_LENGTH, ' ').split('');
   return (
-    <div className={`row ${shaking ? 'shake' : ''}`} style={{ display: 'grid', gridTemplateColumns: `repeat(${WORD_LENGTH}, 1fr)`, gap: '5px' }}>
+    <div className={`row ${shaking ? 'shake' : ''}`}>
       {letters.map((l, i) => {
         const status = result[i] || (l !== ' ' && current ? 'active' : 'empty');
         let bgColor = 'transparent';
@@ -269,17 +221,13 @@ function Row({ word = '', result = [], current = false, shaking = false }) {
         else if (status === 'absent') { bgColor = 'var(--color-absent)'; borderColor = bgColor; }
         else if (status === 'active') { borderColor = 'var(--color-tile-active)'; }
 
-        // Add animation delay for reveal
-        const animDelay = !current && result.length > 0 ? `${i * 0.1}s` : '0s';
         const animClass = !current && result.length > 0 ? 'tile-flip' : (current && l !== ' ' ? 'tile-pop' : '');
+        const animDelay = !current && result.length > 0 ? `${i * 0.1}s` : '0s';
 
         return (
-          <div key={i} className={animClass} style={{
-            width: '3rem', height: '3rem',
-            border: `2px solid ${borderColor}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.8rem', fontWeight: 'bold',
+          <div key={i} className={`tile ${animClass}`} style={{
             backgroundColor: bgColor,
+            borderColor: borderColor,
             animationDelay: animDelay
           }}>
             {l !== ' ' ? l : ''}
@@ -298,9 +246,9 @@ function Keyboard({ onKey, getKeyClass }) {
   ];
 
   return (
-    <div style={{ width: '100%', maxWidth: '500px', padding: '0 8px 8px 8px' }}>
+    <div className="keyboard-container">
       {rows.map((row, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '8px' }}>
+        <div key={i} className="keyboard-row">
           {row.map(key => {
             const status = getKeyClass(key);
             let bg = 'var(--color-key-bg)';
@@ -312,15 +260,8 @@ function Keyboard({ onKey, getKeyClass }) {
               <button
                 key={key}
                 onClick={() => onKey(key)}
-                style={{
-                  flex: key.length > 1 ? 1.5 : 1,
-                  height: '58px',
-                  backgroundColor: bg,
-                  borderRadius: '4px',
-                  fontWeight: 'bold',
-                  fontSize: key.length > 1 ? '12px' : '1.2rem',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
+                className={`key-button ${key.length > 1 ? 'large' : ''}`}
+                style={{ backgroundColor: bg }}
               >
                 {key === 'DEL' ? '⌫' : key}
               </button>
