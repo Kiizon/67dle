@@ -249,7 +249,7 @@ function App() {
         opacity: 0.7,
         pointerEvents: 'none'
       }}>
-        made with ♡ by kish for sammich
+        made with <span style={{ color: '#ff2c2c' }}>♡</span> by kish for sammich
       </div>
     </div>
   )
