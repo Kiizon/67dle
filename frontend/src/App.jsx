@@ -49,7 +49,7 @@ function App() {
         solution
       }));
     }
-  }, [guesses, gameState, dayIndex]);
+  }, [guesses, gameState, dayIndex, solution]);
 
   // Handle Input
   useEffect(() => {
@@ -97,12 +97,12 @@ function App() {
       const isWin = data.result.every(r => r === 'correct');
       if (isWin) {
         setGameState('won');
-        setMessage("Splendid!");
+        setMessage("u r so skibidi!");
       } else if (newGuesses.length >= MAX_GUESSES) {
-        setGameState('lost');
+        setGameState('lost'); // Reverting string to 'lost' for internal consistency
         const sol = data.solution || "Game Over";
         setSolution(sol);
-        setMessage(sol);
+        // NO Toast message for solution here
       }
 
     } catch (e) {
@@ -183,7 +183,23 @@ function App() {
 
       {(gameState === 'won' || gameState === 'lost') && (
         <div className="game-over-modal">
-          <h2 style={{ margin: '0 0 10px 0' }}>{gameState === 'won' ? 'You Won!' : 'Next Time!'}</h2>
+          <h2 style={{ margin: '0 0 10px 0' }}>{gameState === 'won' ? 'You Won!' : 'womp womp'}</h2>
+
+          {gameState === 'lost' && solution && (
+            <div style={{
+              marginBottom: '20px',
+              padding: '10px',
+              backgroundColor: '#3a3a3c',
+              borderRadius: '4px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}>
+              <span style={{ fontSize: '0.9rem', color: '#b6b6b6', marginBottom: '5px' }}>The word was</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', letterSpacing: '0.05em' }}>{solution}</span>
+            </div>
+          )}
+
           <button
             onClick={copyToClipboard}
             style={{
