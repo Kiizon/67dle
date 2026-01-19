@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Share2 } from 'lucide-react'
 import './App.css'
 
 const API_URL = import.meta.env.PROD ? '' : 'http://127.0.0.1:8000';
@@ -13,6 +14,7 @@ function App() {
   const [message, setMessage] = useState('');
   const [solution, setSolution] = useState('');
   const [shaking, setShaking] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Initialize Game
   useEffect(() => {
@@ -30,6 +32,8 @@ function App() {
           setGuesses(parsed.guesses);
           setGameState(parsed.gameState);
           setSolution(parsed.solution || '');
+          // Don't show modal on subsequent visits - it was already shown
+          setShowShareModal(false);
         } else {
           setGameState('playing');
         }
@@ -98,11 +102,12 @@ function App() {
       if (isWin) {
         setGameState('won');
         setMessage("u r so skibidi!");
+        setShowShareModal(true); // Show modal on first win
       } else if (newGuesses.length >= MAX_GUESSES) {
-        setGameState('lost'); // Reverting string to 'lost' for internal consistency
+        setGameState('lost');
         const sol = data.solution || "Game Over";
         setSolution(sol);
-        // NO Toast message for solution here
+        setShowShareModal(true); // Show modal on first loss
       }
 
     } catch (e) {
@@ -181,40 +186,56 @@ function App() {
         </div>
       </div>
 
-      {(gameState === 'won' || gameState === 'lost') && (
-        <div className="game-over-modal">
-          <h2 style={{ margin: '0 0 10px 0' }}>{gameState === 'won' ? 'You Won!' : 'womp womp'}</h2>
+      {/* Modal overlay - only shown on first finish or when share button clicked */}
+      {showShareModal && (gameState === 'won' || gameState === 'lost') && (
+        <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="game-over-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close-btn"
+              onClick={() => setShowShareModal(false)}
+            >
+              ✕
+            </button>
+            <h2 style={{ margin: '0 0 10px 0' }}>{gameState === 'won' ? 'You Won!' : 'womp womp'}</h2>
 
-          {gameState === 'lost' && solution && (
-            <div style={{
-              marginBottom: '20px',
-              padding: '10px',
-              backgroundColor: '#3a3a3c',
-              borderRadius: '4px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
-            }}>
-              <span style={{ fontSize: '0.9rem', color: '#b6b6b6', marginBottom: '5px' }}>The word was</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', letterSpacing: '0.05em' }}>{solution}</span>
-            </div>
-          )}
+            {gameState === 'lost' && solution && (
+              <div style={{
+                marginBottom: '20px',
+                padding: '10px',
+                backgroundColor: '#3a3a3c',
+                borderRadius: '4px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '0.9rem', color: '#b6b6b6', marginBottom: '5px' }}>The word was</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', letterSpacing: '0.05em' }}>{solution}</span>
+              </div>
+            )}
 
-          <button
-            onClick={copyToClipboard}
-            style={{
-              backgroundColor: '#538d4e', color: 'white',
-              padding: '10px 20px', borderRadius: '30px',
-              fontSize: '1rem', fontWeight: 'bold',
-              display: 'flex', alignItems: 'center', gap: '8px'
-            }}>
-            SHARE <span style={{ fontSize: '1.2rem' }}>📤</span>
-          </button>
+            <button
+              onClick={copyToClipboard}
+              className="modal-share-button"
+            >
+              SHARE RESULTS <Share2 size={18} />
+            </button>
+          </div>
         </div>
       )}
 
       <div className="bottom-section">
-        <Keyboard onKey={handleVirtualKey} getKeyClass={getKeyClass} />
+        {gameState === 'playing' ? (
+          <Keyboard onKey={handleVirtualKey} getKeyClass={getKeyClass} />
+        ) : (
+          <div className="share-section">
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="results-button"
+            >
+              SEE RESULTS
+            </button>
+          </div>
+        )}
         <div className="credits">
           made with <span style={{ color: '#ff2c2c' }}>♡</span> by kish for sammich
         </div>

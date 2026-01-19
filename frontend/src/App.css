@@ -129,19 +129,125 @@ h1 {
   white-space: nowrap;
 }
 
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .game-over-modal {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(18, 18, 19, 0.9);
-  padding: 20px;
-  border-radius: 8px;
+  position: relative;
+  background-color: rgba(18, 18, 19, 0.95);
+  padding: 30px 40px;
+  border-radius: 12px;
   border: 1px solid #3a3a3c;
   display: flex;
   flex-direction: column;
   align-items: center;
-  z-index: 40;
+  z-index: 51;
+  animation: slideUp 0.3s ease-out;
+  max-width: 90%;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #818384;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px 10px;
+  transition: color 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: #fff;
+}
+
+/* Share Section (replaces keyboard when game ends) */
+.share-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.results-button {
+  background-color: transparent;
+  color: white;
+  padding: 16px 40px;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: 2px solid #3a3a3c;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.results-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #565758;
+}
+
+.results-button:active {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Modal Share Button */
+.modal-share-button {
+  background-color: transparent;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: bold;
+  border: 2px solid #3a3a3c;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.modal-share-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #565758;
+}
+
+.modal-share-button:active {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Responsive Adjustments */
