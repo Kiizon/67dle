@@ -15,6 +15,10 @@ function App() {
   const [solution, setSolution] = useState('');
   const [shaking, setShaking] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [playerName, setPlayerName] = useState('');
+  const [hasSubmittedName, setHasSubmittedName] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize Game
   useEffect(() => {
@@ -34,6 +38,15 @@ function App() {
           setSolution(parsed.solution || '');
           // Don't show modal on subsequent visits - it was already shown
           setShowShareModal(false);
+          
+          // Check if user already submitted to leaderboard today
+          const submittedName = localStorage.getItem(`67dle_submitted_${serverDay}`);
+          if (submittedName) {
+            setHasSubmittedName(true);
+            setPlayerName(submittedName);
+            // Fetch current leaderboard
+            fetchLeaderboard();
+          }
         } else {
           setGameState('playing');
         }
@@ -164,6 +177,47 @@ function App() {
     setTimeout(() => setMessage(''), 2000);
   }
 
+  const fetchLeaderboard = async () => {
+    try {
+      const res = await fetch(`${API_URL}/leaderboard`);
+      const data = await res.json();
+      setLeaderboard(data.entries || []);
+    } catch (e) {
+      console.error("Failed to fetch leaderboard", e);
+    }
+  }
+
+  const submitToLeaderboard = async () => {
+    if (!playerName.trim()) {
+      setMessage("Please enter your name");
+      setTimeout(() => setMessage(''), 2000);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/leaderboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: playerName.trim(),
+          tries: guesses.length,
+          won: gameState === 'won'
+        })
+      });
+      const data = await res.json();
+      setLeaderboard(data.entries || []);
+      setHasSubmittedName(true);
+      
+      // Save to localStorage so we know they submitted today
+      localStorage.setItem(`67dle_submitted_${dayIndex}`, playerName.trim());
+    } catch (e) {
+      setMessage("Failed to submit");
+      setTimeout(() => setMessage(''), 2000);
+    }
+    setIsSubmitting(false);
+  }
+
   return (
     <div className="app-container">
       <header>
@@ -210,12 +264,59 @@ function App() {
               </div>
             )}
 
-            <button
-              onClick={copyToClipboard}
-              className="modal-share-button"
-            >
-              SHARE RESULTS <Share2 size={18} />
-            </button>
+            {/* Name input form - show if not submitted yet */}
+            {!hasSubmittedName ? (
+              <div className="name-form">
+                <p style={{ margin: '0 0 10px 0', color: '#b6b6b6', fontSize: '0.9rem' }}>
+                  Enter your name for the leaderboard
+                </p>
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Your name"
+                  className="name-input"
+                  maxLength={20}
+                  onKeyDown={(e) => e.key === 'Enter' && submitToLeaderboard()}
+                />
+                <button
+                  onClick={submitToLeaderboard}
+                  className="submit-name-button"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'SUBMITTING...' : 'SUBMIT'}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Leaderboard */}
+                <div className="leaderboard">
+                  <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>Today's Leaderboard</h3>
+                  <div className="leaderboard-list">
+                    {leaderboard.length === 0 ? (
+                      <p style={{ color: '#b6b6b6', fontSize: '0.9rem' }}>No entries yet</p>
+                    ) : (
+                      leaderboard.map((entry, i) => (
+                        <div key={i} className={`leaderboard-entry ${entry.name === playerName ? 'highlight' : ''}`}>
+                          <span className="leaderboard-rank">{i + 1}</span>
+                          <span className="leaderboard-name">{entry.name}</span>
+                          <span className="leaderboard-tries">
+                            {entry.won ? `${entry.tries}/7` : 'X/7'}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={copyToClipboard}
+                  className="modal-share-button"
+                >
+                  SHARE RESULTS <Share2 size={18} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

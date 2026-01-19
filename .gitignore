@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+.venv/
+*.pyc
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+
+backend/leaderboard.json

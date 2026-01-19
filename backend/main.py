@@ -6,8 +6,36 @@ import random
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 import os
+from pathlib import Path
 
 app = FastAPI()
+
+# Leaderboard storage
+LEADERBOARD_FILE = os.path.join(os.path.dirname(__file__), "leaderboard.json")
+
+def get_today_key():
+    """Get today's date key in EST timezone"""
+    today = datetime.now(ZoneInfo("America/New_York")).date()
+    return today.isoformat()
+
+def load_leaderboard():
+    """Load leaderboard from file"""
+    try:
+        with open(LEADERBOARD_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def save_leaderboard(data):
+    """Save leaderboard to file"""
+    with open(LEADERBOARD_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+def get_todays_leaderboard():
+    """Get only today's leaderboard entries"""
+    data = load_leaderboard()
+    today_key = get_today_key()
+    return data.get(today_key, [])
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -37,6 +65,11 @@ class GuessRequest(BaseModel):
 class GuessResponse(BaseModel):
     result: list[str] # ["correct", "present", "absent"]
     is_valid_word: bool
+
+class LeaderboardEntry(BaseModel):
+    name: str
+    tries: int
+    won: bool
 
 def get_daily_word() -> str:
     # Use current date in EST as seed to pick a random consistent word
@@ -104,3 +137,34 @@ def check_guess(request: GuessRequest):
             target_letters_count[letter] -= 1
             
     return {"result": result, "is_valid_word": True, "solution": target}
+
+@app.get("/leaderboard")
+def get_leaderboard():
+    """Get today's leaderboard"""
+    entries = get_todays_leaderboard()
+    # Sort by: won first (True before False), then by tries (ascending)
+    sorted_entries = sorted(entries, key=lambda x: (not x["won"], x["tries"]))
+    return {"entries": sorted_entries, "date": get_today_key()}
+
+@app.post("/leaderboard")
+def add_to_leaderboard(entry: LeaderboardEntry):
+    """Add a player to today's leaderboard"""
+    data = load_leaderboard()
+    today_key = get_today_key()
+    
+    if today_key not in data:
+        data[today_key] = []
+    
+    # Add the new entry
+    data[today_key].append({
+        "name": entry.name.strip(),
+        "tries": entry.tries,
+        "won": entry.won,
+        "timestamp": datetime.now(ZoneInfo("America/New_York")).isoformat()
+    })
+    
+    save_leaderboard(data)
+    
+    # Return updated leaderboard
+    sorted_entries = sorted(data[today_key], key=lambda x: (not x["won"], x["tries"]))
+    return {"entries": sorted_entries, "date": today_key}
