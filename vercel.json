@@ -26,6 +26,10 @@
             "destination": "/backend/main.py"
         },
         {
+            "source": "/leaderboard",
+            "destination": "/backend/main.py"
+        },
+        {
             "source": "/(.*)",
             "destination": "/frontend/$1"
         }
