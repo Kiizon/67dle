@@ -201,9 +201,6 @@ function App() {
             {gameState === 'lost' && solution && (
               <div style={{
                 marginBottom: '20px',
-                padding: '10px',
-                backgroundColor: '#3a3a3c',
-                borderRadius: '4px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center'
