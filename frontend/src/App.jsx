@@ -147,7 +147,7 @@ function App() {
   };
 
   const generateShareGraph = () => {
-    const title = `67DLE ${dayIndex} ${gameState === 'won' ? guesses.length : 'X'}/${MAX_GUESSES}`;
+    const title = `67DLE ${gameState === 'won' ? guesses.length : 'X'}/${MAX_GUESSES}`;
     const grid = guesses.map(g => {
       return g.result.map(r => {
         if (r === 'correct') return '🟩';
