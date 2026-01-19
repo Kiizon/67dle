@@ -53,6 +53,8 @@ function App() {
           const skipped = localStorage.getItem(`67dle_skipped_${serverDay}`);
           if (skipped) {
             setSkippedLeaderboard(true);
+            // Still fetch leaderboard so they can view it
+            fetchLeaderboard();
           }
         } else {
           setGameState('playing');
@@ -225,9 +227,11 @@ function App() {
     setIsSubmitting(false);
   }
 
-  const skipLeaderboard = () => {
+  const skipLeaderboard = async () => {
     setSkippedLeaderboard(true);
     localStorage.setItem(`67dle_skipped_${dayIndex}`, 'true');
+    // Still fetch leaderboard so they can view it
+    await fetchLeaderboard();
   }
 
   return (
@@ -337,13 +341,34 @@ function App() {
                 </button>
               </>
             ) : (
-              /* Skipped leaderboard - just show share button */
-              <button
-                onClick={copyToClipboard}
-                className="modal-share-button"
-              >
-                SHARE RESULTS <Share2 size={18} />
-              </button>
+              /* Skipped leaderboard - show leaderboard (view only) + share button */
+              <>
+                <div className="leaderboard">
+                  <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>Today's Leaderboard</h3>
+                  <div className="leaderboard-list">
+                    {leaderboard.length === 0 ? (
+                      <p style={{ color: '#b6b6b6', fontSize: '0.9rem' }}>No entries yet</p>
+                    ) : (
+                      leaderboard.map((entry, i) => (
+                        <div key={i} className="leaderboard-entry">
+                          <span className="leaderboard-rank">{i + 1}</span>
+                          <span className="leaderboard-name">{entry.name}</span>
+                          <span className="leaderboard-tries">
+                            {entry.won ? `${entry.tries}/7` : 'X/7'}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={copyToClipboard}
+                  className="modal-share-button"
+                >
+                  SHARE RESULTS <Share2 size={18} />
+                </button>
+              </>
             )}
           </div>
         </div>
