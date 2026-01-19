@@ -17,6 +17,7 @@ function App() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [hasSubmittedName, setHasSubmittedName] = useState(false);
+  const [skippedLeaderboard, setSkippedLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,6 +47,12 @@ function App() {
             setPlayerName(submittedName);
             // Fetch current leaderboard
             fetchLeaderboard();
+          }
+          
+          // Check if user skipped leaderboard
+          const skipped = localStorage.getItem(`67dle_skipped_${serverDay}`);
+          if (skipped) {
+            setSkippedLeaderboard(true);
           }
         } else {
           setGameState('playing');
@@ -218,6 +225,11 @@ function App() {
     setIsSubmitting(false);
   }
 
+  const skipLeaderboard = () => {
+    setSkippedLeaderboard(true);
+    localStorage.setItem(`67dle_skipped_${dayIndex}`, 'true');
+  }
+
   return (
     <div className="app-container">
       <header>
@@ -264,8 +276,8 @@ function App() {
               </div>
             )}
 
-            {/* Name input form - show if not submitted yet */}
-            {!hasSubmittedName ? (
+            {/* Name input form - show if not submitted yet and not skipped */}
+            {!hasSubmittedName && !skippedLeaderboard ? (
               <div className="name-form">
                 <p style={{ margin: '0 0 10px 0', color: '#b6b6b6', fontSize: '0.9rem' }}>
                   Enter your name for the leaderboard
@@ -279,15 +291,23 @@ function App() {
                   maxLength={20}
                   onKeyDown={(e) => e.key === 'Enter' && submitToLeaderboard()}
                 />
-                <button
-                  onClick={submitToLeaderboard}
-                  className="submit-name-button"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'SUBMITTING...' : 'SUBMIT'}
-                </button>
+                <div className="form-buttons">
+                  <button
+                    onClick={submitToLeaderboard}
+                    className="submit-name-button"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'SUBMITTING...' : 'SUBMIT'}
+                  </button>
+                  <button
+                    onClick={skipLeaderboard}
+                    className="skip-button"
+                  >
+                    SKIP
+                  </button>
+                </div>
               </div>
-            ) : (
+            ) : hasSubmittedName ? (
               <>
                 {/* Leaderboard */}
                 <div className="leaderboard">
@@ -316,6 +336,14 @@ function App() {
                   SHARE RESULTS <Share2 size={18} />
                 </button>
               </>
+            ) : (
+              /* Skipped leaderboard - just show share button */
+              <button
+                onClick={copyToClipboard}
+                className="modal-share-button"
+              >
+                SHARE RESULTS <Share2 size={18} />
+              </button>
             )}
           </div>
         </div>

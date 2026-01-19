@@ -281,6 +281,11 @@ h1 {
   color: #565758;
 }
 
+.form-buttons {
+  display: flex;
+  gap: 10px;
+}
+
 .submit-name-button {
   background-color: transparent;
   color: white;
@@ -301,6 +306,22 @@ h1 {
 .submit-name-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.skip-button {
+  background-color: transparent;
+  color: #818384;
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.skip-button:hover {
+  color: white;
 }
 
 /* Leaderboard */
