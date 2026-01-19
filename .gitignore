@@ -9,4 +9,7 @@ node_modules/
 # OS
 .DS_Store
 
+# Data/secrets
 backend/leaderboard.json
+.env
+backend/.env
