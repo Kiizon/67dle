@@ -14,10 +14,6 @@
     ],
     "rewrites": [
         {
-            "source": "/debug-env",
-            "destination": "/backend/main.py"
-        },
-        {
             "source": "/daily-word-check",
             "destination": "/backend/main.py"
         },
