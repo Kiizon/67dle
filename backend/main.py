@@ -73,6 +73,16 @@ def get_daily_word() -> str:
 def read_root():
     return {"message": "67dle API is running"}
 
+@app.get("/debug-env")
+def debug_env():
+    """Debug endpoint to check if env vars are set (not exposing values)"""
+    return {
+        "SUPABASE_URL_set": bool(os.environ.get("SUPABASE_URL")),
+        "SUPABASE_KEY_set": bool(os.environ.get("SUPABASE_KEY")),
+        "SUPABASE_URL_length": len(os.environ.get("SUPABASE_URL", "")),
+        "SUPABASE_KEY_length": len(os.environ.get("SUPABASE_KEY", "")),
+    }
+
 @app.get("/daily-word-check")
 def check_daily_word():
     # Use current date in EST as seed

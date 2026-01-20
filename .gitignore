@@ -13,3 +13,5 @@ node_modules/
 backend/leaderboard.json
 .env
 backend/.env
+.vercel
+.env*.local
