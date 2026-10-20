@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Share2 } from 'lucide-react'
 import './App.css'
 
-const API_URL = import.meta.env.PROD ? '' : 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://127.0.0.1:8000');
 const WORD_LENGTH = 6;
 const MAX_GUESSES = 7;
 
@@ -19,12 +19,15 @@ function App() {
   const [hasSubmittedName, setHasSubmittedName] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const guessInFlight = useRef(false);
+  const messageTimer = useRef(null);
 
   // Initialize Game
   useEffect(() => {
     async function init() {
       try {
         const res = await fetch(`${API_URL}/daily-word-check`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const serverDay = data.day_index;
         setDayIndex(serverDay);
@@ -51,7 +54,7 @@ function App() {
         } else {
           setGameState('playing');
         }
-      } catch (e) {
+      } catch {
         setMessage("Error connecting to server");
       }
     }
@@ -69,36 +72,29 @@ function App() {
     }
   }, [guesses, gameState, dayIndex, solution]);
 
-  // Handle Input
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-
-    const handleKey = (e) => {
-      if (e.key === 'Enter') submitGuess();
-      else if (e.key === 'Backspace') setCurrentGuess(prev => prev.slice(0, -1));
-      else if (/^[a-zA-Z]$/.test(e.key)) {
-        if (currentGuess.length < WORD_LENGTH) {
-          setCurrentGuess(prev => prev + e.key.toUpperCase());
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [currentGuess, gameState]);
+  // Show a toast, replacing any message that is still on screen
+  const flashMessage = (msg, ms = 2000) => {
+    clearTimeout(messageTimer.current);
+    setMessage(msg);
+    messageTimer.current = setTimeout(() => setMessage(''), ms);
+  };
 
   const submitGuess = async () => {
     if (currentGuess.length !== WORD_LENGTH) {
       triggerShake("Not enough letters");
       return;
     }
+    // Ignore repeat Enter presses while the previous guess is being checked
+    if (guessInFlight.current) return;
+    guessInFlight.current = true;
 
     try {
       const res = await fetch(`${API_URL}/guess`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guess: currentGuess })
+        body: JSON.stringify({ guess: currentGuess, attempt: guesses.length + 1 })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (!data.is_valid_word) {
@@ -115,27 +111,28 @@ function App() {
       const isWin = data.result.every(r => r === 'correct');
       if (isWin) {
         setGameState('won');
-        setMessage("u r so skibidi!");
+        flashMessage("u r so skibidi!");
         setShowShareModal(true); // Show modal on first win
+        fetchLeaderboard();
       } else if (newGuesses.length >= MAX_GUESSES) {
         setGameState('lost');
         const sol = data.solution || "Game Over";
         setSolution(sol);
         setShowShareModal(true); // Show modal on first loss
+        fetchLeaderboard();
       }
 
-    } catch (e) {
-      setMessage("Network Error");
+    } catch {
+      flashMessage("Network Error");
+    } finally {
+      guessInFlight.current = false;
     }
   };
 
   const triggerShake = (msg) => {
-    setMessage(msg);
+    flashMessage(msg, 1000);
     setShaking(true);
-    setTimeout(() => {
-      setShaking(false);
-      setMessage('');
-    }, 1000);
+    setTimeout(() => setShaking(false), 1000);
   };
 
   const handleVirtualKey = (key) => {
@@ -144,6 +141,27 @@ function App() {
     else if (key === 'DEL') setCurrentGuess(prev => prev.slice(0, -1));
     else if (currentGuess.length < WORD_LENGTH) setCurrentGuess(prev => prev + key);
   }
+
+  // Handle physical keyboard input. Re-subscribes every render so the handler
+  // always sees the latest guess state.
+  useEffect(() => {
+    if (gameState !== 'playing') return;
+
+    const handleKey = (e) => {
+      // Leave browser/OS shortcuts like Cmd+R or Ctrl+C alone
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Enter') {
+        // Stop Enter also "clicking" an on-screen key that still has focus
+        e.preventDefault();
+        handleVirtualKey('ENTER');
+      }
+      else if (e.key === 'Backspace') handleVirtualKey('DEL');
+      else if (/^[a-zA-Z]$/.test(e.key)) handleVirtualKey(e.key.toUpperCase());
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  });
 
   // Calculate Keyboard Colors
   const getKeyClass = (key) => {
@@ -172,10 +190,13 @@ function App() {
     return `${title}\n\n${grid}`;
   }
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generateShareGraph());
-    setMessage("Copied to clipboard!");
-    setTimeout(() => setMessage(''), 2000);
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generateShareGraph());
+      flashMessage("Copied to clipboard!");
+    } catch {
+      flashMessage("Couldn't copy results");
+    }
   }
 
   const fetchLeaderboard = async () => {
@@ -190,8 +211,7 @@ function App() {
 
   const submitToLeaderboard = async () => {
     if (!playerName.trim()) {
-      setMessage("Please enter your name");
-      setTimeout(() => setMessage(''), 2000);
+      flashMessage("Please enter your name");
       return;
     }
 
@@ -206,15 +226,15 @@ function App() {
           won: gameState === 'won'
         })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setLeaderboard(data.entries || []);
       setHasSubmittedName(true);
       
       // Save to localStorage so we know they submitted today
       localStorage.setItem(`67dle_submitted_${dayIndex}`, playerName.trim());
-    } catch (e) {
-      setMessage("Failed to submit");
-      setTimeout(() => setMessage(''), 2000);
+    } catch {
+      flashMessage("Failed to submit");
     }
     setIsSubmitting(false);
   }
@@ -325,7 +345,7 @@ function App() {
       <div className="bottom-section">
         {gameState === 'playing' ? (
           <Keyboard onKey={handleVirtualKey} getKeyClass={getKeyClass} />
-        ) : (
+        ) : gameState !== 'loading' && (
           <div className="share-section">
             <button
               onClick={() => setShowShareModal(true)}
@@ -361,7 +381,7 @@ function Row({ word = '', result = [], current = false, shaking = false }) {
         const animDelay = !current && result.length > 0 ? `${i * 0.1}s` : '0s';
 
         return (
-          <div key={i} className={`tile ${animClass}`} style={{
+          <div key={i} className={`tile ${animClass}`} data-state={status} style={{
             backgroundColor: bgColor,
             borderColor: borderColor,
             animationDelay: animDelay
@@ -397,6 +417,7 @@ function Keyboard({ onKey, getKeyClass }) {
                 key={key}
                 onClick={() => onKey(key)}
                 className={`key-button ${key.length > 1 ? 'large' : ''}`}
+                data-state={status}
                 style={{ backgroundColor: bg }}
               >
                 {key === 'DEL' ? '⌫' : key}

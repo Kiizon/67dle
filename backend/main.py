@@ -1,12 +1,17 @@
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
+from typing import Annotated
+from functools import lru_cache
 import json
+import logging
 import random
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 import os
 from supabase import create_client, Client
+
+logger = logging.getLogger("67dle")
 
 app = FastAPI()
 
@@ -14,22 +19,26 @@ app = FastAPI()
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
+@lru_cache(maxsize=1)
 def get_supabase() -> Client | None:
-    """Get Supabase client"""
+    """Get a shared Supabase client (created once per process)"""
     if SUPABASE_URL and SUPABASE_KEY:
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     return None
 
+def get_today() -> date:
+    """Today's date in EST, which is when the daily word rolls over"""
+    return datetime.now(ZoneInfo("America/New_York")).date()
+
 def get_today_key():
     """Get today's date key in EST timezone"""
-    today = datetime.now(ZoneInfo("America/New_York")).date()
-    return today.isoformat()
+    return get_today().isoformat()
 
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,  # no cookies are used; credentials + "*" is unsafe
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,24 +55,27 @@ WORDS_SET = set(WORDS_LIST)
 
 # Game settings
 START_DATE = date(2024, 1, 1)
+WORD_LENGTH = 6
+MAX_GUESSES = 7
 
 class GuessRequest(BaseModel):
-    guess: str
+    guess: str = Field(max_length=32)
+    # Which attempt this is (1-based). The answer is only revealed on the last one.
+    attempt: int | None = Field(default=None, ge=1, le=MAX_GUESSES)
 
 class GuessResponse(BaseModel):
     result: list[str] # ["correct", "present", "absent"]
     is_valid_word: bool
 
 class LeaderboardEntry(BaseModel):
-    name: str
-    tries: int
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
+    tries: int = Field(ge=1, le=MAX_GUESSES)
     won: bool
 
 def get_daily_word() -> str:
     # Use current date in EST as seed to pick a random consistent word
-    today = datetime.now(ZoneInfo("America/New_York")).date()
     # Create a seeded random instance so it doesn't affect global random state
-    rng = random.Random(today.toordinal())
+    rng = random.Random(get_today().toordinal())
     
     if not WORDS_LIST:
         return "NOWORD"
@@ -75,9 +87,7 @@ def read_root():
 
 @app.get("/daily-word-check")
 def check_daily_word():
-    # Use current date in EST as seed
-    today = datetime.now(ZoneInfo("America/New_York")).date()
-    days_diff = (today - START_DATE).days
+    days_diff = (get_today() - START_DATE).days
     return {"day_index": days_diff}
 
 @app.post("/validate")
@@ -85,23 +95,9 @@ def validate_word(request: GuessRequest):
     guess = request.guess.upper()
     return {"is_valid": guess in WORDS_SET}
 
-@app.post("/guess")
-def check_guess(request: GuessRequest):
-    guess = request.guess.upper()
-    
-    # 1. Validation
-    if len(guess) != 6:
-        raise HTTPException(status_code=400, detail="Word must be 6 letters")
-    
-    # Check if real word
-    if guess not in WORDS_SET:
-         return {"result": [], "is_valid_word": False}
-
-    target = get_daily_word()
-    
-    # 2. Logic for Green/Yellow/Gray
-    # Initialize result array
-    result = ["absent"] * 6
+def score_guess(guess: str, target: str) -> list[str]:
+    """Green/Yellow/Gray scoring that handles repeated letters like Wordle"""
+    result = ["absent"] * WORD_LENGTH
     target_letters_count = {}
     
     # Count frequency of letters in target
@@ -109,13 +105,13 @@ def check_guess(request: GuessRequest):
         target_letters_count[char] = target_letters_count.get(char, 0) + 1
     
     # First pass: Find Greens (correct position)
-    for i in range(6):
+    for i in range(WORD_LENGTH):
         if guess[i] == target[i]:
             result[i] = "correct"
             target_letters_count[guess[i]] -= 1
             
     # Second pass: Find Yellows (present but wrong position)
-    for i in range(6):
+    for i in range(WORD_LENGTH):
         if result[i] == "correct":
             continue
             
@@ -123,8 +119,34 @@ def check_guess(request: GuessRequest):
         if target_letters_count.get(letter, 0) > 0:
             result[i] = "present"
             target_letters_count[letter] -= 1
-            
-    return {"result": result, "is_valid_word": True, "solution": target}
+
+    return result
+
+@app.post("/guess")
+def check_guess(request: GuessRequest):
+    guess = request.guess.upper()
+    
+    # 1. Validation
+    if len(guess) != WORD_LENGTH:
+        raise HTTPException(status_code=400, detail="Word must be 6 letters")
+    
+    # Check if real word
+    if guess not in WORDS_SET:
+         return {"result": [], "is_valid_word": False}
+
+    target = get_daily_word()
+    response = {"result": score_guess(guess, target), "is_valid_word": True}
+
+    # Only reveal the answer once the player is out of guesses
+    if request.attempt == MAX_GUESSES:
+        response["solution"] = target
+    return response
+
+def fetch_leaderboard(supabase: Client, today_key: str) -> list[dict]:
+    response = supabase.table("leaderboard").select("*").eq("date_key", today_key).execute()
+    entries = response.data or []
+    # Sort by: won first (True before False), then by tries (ascending)
+    return sorted(entries, key=lambda x: (not x["won"], x["tries"]))
 
 @app.get("/leaderboard")
 def get_leaderboard():
@@ -136,13 +158,10 @@ def get_leaderboard():
         return {"entries": [], "date": today_key, "error": "Database not configured"}
     
     try:
-        response = supabase.table("leaderboard").select("*").eq("date_key", today_key).execute()
-        entries = response.data or []
-        # Sort by: won first (True before False), then by tries (ascending)
-        sorted_entries = sorted(entries, key=lambda x: (not x["won"], x["tries"]))
-        return {"entries": sorted_entries, "date": today_key}
-    except Exception as e:
-        return {"entries": [], "date": today_key, "error": str(e)}
+        return {"entries": fetch_leaderboard(supabase, today_key), "date": today_key}
+    except Exception:
+        logger.exception("Failed to read leaderboard")
+        return {"entries": [], "date": today_key, "error": "Leaderboard unavailable"}
 
 @app.post("/leaderboard")
 def add_to_leaderboard(entry: LeaderboardEntry):
@@ -156,16 +175,13 @@ def add_to_leaderboard(entry: LeaderboardEntry):
     try:
         # Add the new entry
         supabase.table("leaderboard").insert({
-            "name": entry.name.strip(),
+            "name": entry.name,
             "tries": entry.tries,
             "won": entry.won,
             "date_key": today_key
         }).execute()
         
-        # Fetch updated leaderboard
-        response = supabase.table("leaderboard").select("*").eq("date_key", today_key).execute()
-        entries = response.data or []
-        sorted_entries = sorted(entries, key=lambda x: (not x["won"], x["tries"]))
-        return {"entries": sorted_entries, "date": today_key}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"entries": fetch_leaderboard(supabase, today_key), "date": today_key}
+    except Exception:
+        logger.exception("Failed to write leaderboard")
+        raise HTTPException(status_code=500, detail="Leaderboard unavailable")
